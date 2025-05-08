@@ -29,6 +29,9 @@ public class Users {
     @Column(unique = true)
     private String googleId;
 
+    @Column
+    private  String username;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

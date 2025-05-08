@@ -1,29 +1,19 @@
 package com.example.car_rental.controller;
 
 
-import com.example.car_rental.model.LoginRequest;
-import com.example.car_rental.model.OwnerRegisterRequest;
-import com.example.car_rental.model.RegisterRequest;
+import com.example.car_rental.DTO.LoginRequest;
+import com.example.car_rental.DTO.OwnerRegisterRequest;
+import com.example.car_rental.DTO.RegisterRequest;
 import com.example.car_rental.service.AuthService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/auth")

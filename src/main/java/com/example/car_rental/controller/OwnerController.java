@@ -48,4 +48,15 @@ public class OwnerController {
         return ownerService.getOwnerCars(authentication);
     }
 
+    @GetMapping("/bookings")
+    public ResponseEntity<Map<String,Object>> getOwnerBookings(Authentication authentication){
+        return  ownerService.getOwnerBookings(authentication);
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getOwnerStats(Authentication authentication) {
+        return ownerService.getOwnerStats(authentication);
+    }
+
+
 }

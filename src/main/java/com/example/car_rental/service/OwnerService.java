@@ -2,9 +2,12 @@ package com.example.car_rental.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.example.car_rental.DTO.BookingResponseDTO;
+import com.example.car_rental.model.Booking;
 import com.example.car_rental.model.Car;
 import com.example.car_rental.model.Role;
 import com.example.car_rental.model.Users;
+import com.example.car_rental.repository.BookingRepo;
 import com.example.car_rental.repository.CarRepo;
 import com.example.car_rental.repository.UserRepo;
 import org.apache.catalina.User;
@@ -17,16 +20,19 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class OwnerService {
     private final CarRepo carRepo;
     private final UserRepo userRepo;
     private final Cloudinary cloudinary;
+    private final BookingRepo bookingRepo;
 
     @Autowired
     public OwnerService(
@@ -34,10 +40,11 @@ public class OwnerService {
             UserRepo userRepository,
             @Value("${cloudinary.cloud-name:}") String cloudName,
             @Value("${cloudinary.api-key:}") String apiKey,
-            @Value("${cloudinary.api-secret:}") String apiSecret
+            @Value("${cloudinary.api-secret:}") String apiSecret, BookingRepo bookingRepo
     ) {
         this.carRepo = carRepo;
         this.userRepo = userRepository;
+        this.bookingRepo = bookingRepo;
         if (cloudName.isEmpty() || apiKey.isEmpty() || apiSecret.isEmpty()) {
             throw new IllegalArgumentException("Cloudinary configuration is missing or incomplete");
         }
@@ -158,5 +165,103 @@ public class OwnerService {
         }
 
 
+    }
+
+    public ResponseEntity<Map<String, Object>> getOwnerBookings(Authentication authentication) {
+        Map<String,Object> response = new HashMap<>();
+
+        if (!authorizeUser(authentication)){
+            response.put("message","Un authorized");
+            return  new ResponseEntity<>(response,HttpStatus.UNAUTHORIZED);
+        }
+
+        String email = authentication.getName();
+        Users owner = userRepo.findByEmail(email);
+        List<Car> cars = carRepo.findByOwnerId(owner.getId());
+        System.out.println(cars);
+        List<Booking> bookings = new ArrayList<>();
+        for (Car car : cars) {
+            List<Booking> carBookings = bookingRepo.findAllByCarId(car.getId());
+            if (carBookings != null) {
+                bookings.addAll(carBookings);
+            }
+        }
+
+
+        List<BookingResponseDTO> bookingDTOs = bookings.stream().map(booking -> {
+            BookingResponseDTO dto = new BookingResponseDTO();
+            dto.setId(booking.getId());
+            dto.setCarId(booking.getCar().getId());
+            dto.setCarMake(booking.getCar().getMake());
+            dto.setCarModel(booking.getCar().getModel());
+            dto.setUserId(booking.getUser().getId());
+            dto.setUserEmail(booking.getUser().getEmail());
+            dto.setStartDate(booking.getStartDate());
+            dto.setEndDate(booking.getEndDate());
+            dto.setTotalPrice(booking.getTotalPrice());
+            return dto;
+        }).collect(Collectors.toList());
+
+
+        response.put("message","Bookings fetched");
+        response.put("data",bookingDTOs);
+        return  new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    public ResponseEntity<Map<String, Object>> getOwnerStats(Authentication authentication) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (!authorizeUser(authentication)) {
+                response.put("message", "User not authenticated");
+                return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            String email = authentication.getName();
+            Users owner = userRepo.findByEmail(email);
+            if (owner == null) {
+                response.put("message", "Owner not found");
+                return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+            }
+//            if (!"OWNER".equals(owner.getRole())) {
+//                response.put("message", "Unauthorized: User is not an owner");
+//                return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+//            }
+
+            // Get total cars
+            List<Car> cars = carRepo.findByOwnerId(owner.getId());
+            long totalCars = cars.size();
+
+            // Get bookings for owner's cars
+            List<Booking> bookings = new ArrayList<>();
+            for (Car car : cars) {
+                List<Booking> carBookings = bookingRepo.findAllByCarId(car.getId());
+                if (carBookings != null) {
+                    bookings.addAll(carBookings);
+                }
+            }
+
+            // Calculate active bookings (endDate >= today)
+            LocalDate today = LocalDate.now();
+            long activeBookings = bookings.stream()
+                    .filter(booking -> !booking.getEndDate().isBefore(today))
+                    .count();
+
+            // Calculate total earnings
+            double totalEarnings = bookings.stream()
+                    .mapToDouble(Booking::getTotalPrice)
+                    .sum();
+
+            // Prepare response
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalCars", totalCars);
+            stats.put("activeBookings", activeBookings);
+            stats.put("totalEarnings", totalEarnings);
+
+            response.put("data", stats);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            response.put("message", "Failed to retrieve owner stats: " + e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

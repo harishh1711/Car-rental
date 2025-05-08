@@ -1,5 +1,8 @@
 package com.example.car_rental.service;
 
+import com.example.car_rental.DTO.LoginRequest;
+import com.example.car_rental.DTO.OwnerRegisterRequest;
+import com.example.car_rental.DTO.RegisterRequest;
 import com.example.car_rental.model.*;
 import com.example.car_rental.repository.UserRepo;
 import com.example.car_rental.utils.JwtUtil;
